@@ -1,6 +1,13 @@
 import { fetchBoard, hasGithubToken } from '@/lib/github'
 import { redis } from '@/lib/redis'
-import { getBoard, getRepo, getSeats, getTicker, setBoard } from '@/lib/state'
+import {
+  getAlerts,
+  getBoard,
+  getRepo,
+  getSeats,
+  getTicker,
+  setBoard,
+} from '@/lib/state'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,13 +45,18 @@ export async function GET() {
     }
   }
 
-  const [seats, ticker] = await Promise.all([getSeats(), getTicker()])
+  const [seats, ticker, alerts] = await Promise.all([
+    getSeats(),
+    getTicker(),
+    getAlerts(),
+  ])
   return Response.json({
     now: Date.now(),
     repo,
     seats,
     board: freshBoard,
     ticker,
+    alerts,
     ...(reconcileError ? { reconcileError } : {}),
   })
 }

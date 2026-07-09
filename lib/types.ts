@@ -32,11 +32,20 @@ export type BoardPr = {
 
 export type Board = { fetchedAt: number; issues: BoardIssue[]; prs: BoardPr[] }
 
+export type Alert = {
+  id: string
+  severity: 'P0' | 'P1'
+  wire: string
+  detail: string
+  at: number
+}
+
 export type StateResponse = {
   now: number
   repo: string | null
   seats: SeatBeat[]
   board: Board | null
   ticker: TickerEvent[]
+  alerts: Alert[]
   reconcileError?: string
 }

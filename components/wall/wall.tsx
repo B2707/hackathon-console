@@ -7,6 +7,7 @@ import { BackgroundPaths } from '@/components/ui/background-paths'
 import { ActivityBeams } from './activity-beams'
 import { BoardPanel } from './board-panel'
 import { KpiGauges } from './kpi-gauges'
+import { LiveAlerts } from './live-alerts'
 import { SeatHealth } from './seat-health'
 import { WallHeader } from './wall-header'
 import { WallSkeleton } from './wall-skeleton'
@@ -14,6 +15,7 @@ import type { StateResponse } from '@/lib/types'
 
 const NAV_ITEMS = [
   { name: 'Wall', url: '#wall', icon: LayoutDashboard },
+  { name: 'Alerts', url: '#alerts', icon: TriangleAlert },
   { name: 'Board', url: '#board', icon: Table2 },
   { name: 'Activity', url: '#activity', icon: Activity },
 ]
@@ -32,6 +34,7 @@ export function Wall({ data, error, isSyncing, onRefresh }: WallProps) {
 
   const now = data?.now ?? Date.now()
   const seats = data?.seats ?? []
+  const alerts = data?.alerts ?? []
   const issues = data?.board?.issues ?? []
   const prs = data?.board?.prs ?? []
 
@@ -60,6 +63,10 @@ export function Wall({ data, error, isSyncing, onRefresh }: WallProps) {
           <WallSkeleton />
         ) : (
           <>
+            <section id="alerts" aria-label="live alerts">
+              <LiveAlerts alerts={alerts} now={now} />
+            </section>
+
             <section id="wall" aria-label="key metrics">
               <KpiGauges seats={seats} issues={issues} prs={prs} now={now} />
             </section>
