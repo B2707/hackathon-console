@@ -1,10 +1,9 @@
 import type { BoardIssue } from './types'
 
-// --- polling + auth contract (unchanged from the original wall) -------------
+// --- polling + freshness contract (unchanged from the original wall) --------
 export const POLL_MS = 15_000
 export const FRESH_MS = 10 * 60_000
 export const WARM_MS = 30 * 60_000
-export const KEY_STORAGE = 'team-key'
 
 export const ROSTER = ['bader', 'sjp', 'amr', 'adham'] as const
 

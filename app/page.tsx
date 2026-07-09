@@ -1,24 +1,19 @@
 'use client'
 
 import { ConsoleShell } from '@/components/console/console-shell'
-import { KeyGate } from '@/components/console/key-gate'
 import { useTeamState } from '@/hooks/use-team-state'
 
 export default function Wall() {
-  const { keyLoaded, teamKey, data, error, isSyncing, unlock, reset } =
-    useTeamState()
+  const { data, error, isSyncing, refresh } = useTeamState()
 
-  // Avoid a flash of the gate before localStorage is read (matches original).
-  if (!keyLoaded) return null
-
-  if (!teamKey) return <KeyGate onSubmit={unlock} />
-
+  // The wall is a public, read-only view — it renders immediately and polls
+  // /api/state with no team key. Write endpoints stay authenticated server-side.
   return (
     <ConsoleShell
       data={data}
       error={error}
       isSyncing={isSyncing}
-      onReset={reset}
+      onReset={refresh}
     />
   )
 }
