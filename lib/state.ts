@@ -62,6 +62,13 @@ export async function getRepo(): Promise<string | null> {
 
 // Webhook payloads carry full objects — patch the cached board in place so
 // the wall stays fresh between lazy reconciles without GitHub API calls.
+//
+// Concurrency: patchBoardIssue/patchBoardPr do a read-modify-write on the same
+// 'board' key with no lock, so two webhooks landing together can clobber each
+// other (accepted last-writer-wins). We deliberately do NOT add locking — the
+// lazy reconcile in app/api/state re-fetches the board from GitHub on staleness
+// (60s with a token, 5min without) and self-heals any dropped patch within
+// minutes, comfortably inside the event window.
 export async function patchBoardIssue(
   issue: BoardIssue,
   isOpen: boolean
