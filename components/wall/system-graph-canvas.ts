@@ -1,26 +1,22 @@
-// Draw + animation core for the Live System Graph (handoff `team-board.html`
-// script lines 2675–2752). Framework-agnostic: the React panel owns the feed
-// state + node colours and hands them in; this module owns the <canvas> render
-// loop, the fixed event sequence, packet motion, node pulses and hover.
+// Draw + animation core for the Live System Graph. Framework-agnostic: the React
+// panel owns the real node COLOURS + the event feed and hands them in; this
+// module owns the <canvas> render loop, packet motion, node pulses/flash and
+// hover-highlight.
 //
-// Node COLOURS are supplied by the panel (real seat/alert state) via a live
-// ref, so a 15s poll can recolour nodes without restarting the loop. Values in
-// the ref must be HEX (the canvas parses them to rgba()).
+// NOTHING fires on a timer. The panel diffs the real ticker/alert feed across
+// polls and calls `handle.fire(spec)` once per genuinely-new event. Node COLOURS
+// are supplied via a live ref (nodeId -> HEX) so the 15s poll recolours nodes
+// without restarting the loop. Values in the ref must be HEX (parsed to rgba()).
 
-export type FeedType =
+export type NodeType =
+  | 'repo'
   | 'seat'
+  | 'agents'
   | 'ci'
-  | 'ok'
-  | 'review'
-  | 'deploy'
-  | 'agent'
-  | 'error'
+  | 'tripwires'
+  | 'discord'
+  | 'console'
 
-export type FeedSegment = { t: string; mono?: boolean; danger?: boolean }
-export type SysEvent = { type: FeedType; actor: string; segments: FeedSegment[] }
-export type FeedRow = SysEvent & { id: string; time: string; justAdded?: boolean }
-
-type NodeType = 'repo' | 'seat' | 'agent' | 'ci' | 'test' | 'deploy'
 export type NodeDef = {
   id: string
   x: number
@@ -30,108 +26,126 @@ export type NodeDef = {
   r?: number
 }
 
-// Node layout (fractions of the canvas box) — repo at centre, seats down the
-// left rail, agents/CI/CD around the right + bottom. Verbatim from the source.
-export const NODES: NodeDef[] = [
-  { id: 'repo', x: 0.52, y: 0.5, t: 'repo', label: 'repo', r: 14 },
-  { id: 'bader', x: 0.11, y: 0.2, t: 'seat', label: 'bader' },
-  { id: 'sjp', x: 0.11, y: 0.42, t: 'seat', label: 'sjp' },
-  { id: 'amr', x: 0.11, y: 0.64, t: 'seat', label: 'amr' },
-  { id: 'adham', x: 0.11, y: 0.86, t: 'seat', label: 'adham' },
-  { id: 'agent', x: 0.33, y: 0.13, t: 'agent', label: 'claude-agent' },
-  { id: 'review', x: 0.83, y: 0.17, t: 'agent', label: 'review-bot' },
-  { id: 'ci', x: 0.89, y: 0.44, t: 'ci', label: 'ci-runner' },
-  { id: 'test', x: 0.86, y: 0.71, t: 'test', label: 'tests' },
-  { id: 'deploy', x: 0.66, y: 0.9, t: 'deploy', label: 'deploy-bot' },
-  { id: 'lint', x: 0.44, y: 0.9, t: 'ci', label: 'lint' },
+// Palette — mirrors the globals.css custom properties. Kept as HEX because the
+// canvas parses these to rgba() for the fills / glows / pulse rings.
+export const C = {
+  primary: '#4d8dff', // --primary
+  success: '#22c55e', // --success
+  warning: '#fbbf24', // --warning
+  danger: '#f87171', // --danger
+  violet: '#a78bfa', // --violet
+  muted: '#7c7d85', // --muted-foreground
+  repoFill: '#101014',
+} as const
+
+export const SEAT_PREFIX = 'seat:'
+
+// Fixed infrastructure nodes ringing the central repo. Seat nodes are generated
+// per-roster (see buildGraph) down the left rail.
+const INFRA: NodeDef[] = [
+  { id: 'repo', x: 0.5, y: 0.5, t: 'repo', label: 'repo', r: 14 },
+  { id: 'agents', x: 0.31, y: 0.12, t: 'agents', label: 'agents' },
+  { id: 'ci', x: 0.85, y: 0.26, t: 'ci', label: 'ci' },
+  { id: 'tripwires', x: 0.85, y: 0.64, t: 'tripwires', label: 'tripwires' },
+  { id: 'discord', x: 0.9, y: 0.87, t: 'discord', label: 'discord' },
+  { id: 'console', x: 0.52, y: 0.9, t: 'console', label: 'console' },
 ]
 
-export const EDGES: [string, string][] = [
-  ['bader', 'repo'],
-  ['sjp', 'repo'],
-  ['amr', 'repo'],
-  ['adham', 'repo'],
-  ['agent', 'repo'],
-  ['repo', 'review'],
-  ['review', 'repo'],
-  ['repo', 'ci'],
-  ['ci', 'test'],
-  ['test', 'deploy'],
-  ['lint', 'ci'],
-  ['repo', 'lint'],
-]
-
-// Fallback colour by node type (packet colour + legend). Real per-node colours
-// come from the panel's colour ref.
-export const NODE_TYPE_COLOR: Record<NodeType, string> = {
-  seat: '#4d8dff',
-  agent: '#a78bfa',
-  ci: '#fbbf24',
-  test: '#f97316',
-  deploy: '#22c55e',
-  repo: '#f6f7f9',
+/**
+ * Build the node + edge sets for a given roster + repo. Seats spread evenly down
+ * the left rail; the fixed infra nodes ring the repo. Edges mirror the real data
+ * flows: seat_i/agents -> repo, repo -> ci/tripwires/console, ci -> console,
+ * tripwires -> discord/console.
+ */
+export function buildGraph(
+  seatIds: string[],
+  repoLabel: string
+): { nodes: NodeDef[]; edges: [string, string][] } {
+  const n = seatIds.length
+  const seatNodes: NodeDef[] = seatIds.map((id, i) => ({
+    id: `${SEAT_PREFIX}${id}`,
+    x: 0.1,
+    y: n <= 1 ? 0.5 : 0.18 + (i * 0.66) / (n - 1),
+    t: 'seat',
+    label: id,
+  }))
+  const nodes: NodeDef[] = [
+    { ...INFRA[0], label: repoLabel || 'repo' },
+    ...INFRA.slice(1),
+    ...seatNodes,
+  ]
+  const edges: [string, string][] = [
+    ['agents', 'repo'],
+    ['repo', 'ci'],
+    ['repo', 'tripwires'],
+    ['repo', 'console'],
+    ['ci', 'console'],
+    ['tripwires', 'discord'],
+    ['tripwires', 'console'],
+    ...seatNodes.map((s) => [s.id, 'repo'] as [string, string]),
+  ]
+  return { nodes, edges }
 }
 
+// Bottom-left legend — the real node taxonomy.
 export const LEGEND: { label: string; color: string }[] = [
-  { label: 'seat', color: '#4d8dff' },
-  { label: 'agent', color: '#a78bfa' },
-  { label: 'ci', color: '#fbbf24' },
-  { label: 'test', color: '#f97316' },
-  { label: 'deploy', color: '#22c55e' },
+  { label: 'seat', color: C.primary },
+  { label: 'agents', color: C.violet },
+  { label: 'ci', color: C.warning },
+  { label: 'tripwires', color: C.danger },
+  { label: 'discord', color: C.muted },
+  { label: 'console', color: C.primary },
 ]
 
-// Feed-row icon tile colours, mirroring the prototype's `.ev-ic.*` classes.
-export const EV_STYLE: Record<FeedType, { color: string; bg: string }> = {
-  seat: { color: 'var(--primary)', bg: 'rgba(77,141,255,.12)' },
-  ci: { color: 'var(--warning)', bg: 'rgba(251,191,36,.14)' },
-  ok: { color: 'var(--success)', bg: 'rgba(34,197,94,.14)' },
-  review: { color: 'var(--violet)', bg: 'rgba(167,139,250,.14)' },
-  deploy: { color: '#60a5fa', bg: 'rgba(96,165,250,.14)' },
-  agent: { color: 'var(--danger)', bg: 'rgba(251,113,133,.14)' },
-  error: { color: 'var(--danger)', bg: 'rgba(248,113,113,.16)' },
+// A packet the panel asks us to animate for one real event. `from`/`to` are node
+// ids; `pulse` nodes ring immediately; `flash` overrides a node's colour briefly.
+export type PacketSpec = {
+  from: string
+  to: string
+  color: string
+  pulse?: string[]
+  flash?: { id: string; color: string }
 }
 
-// Static-first seed rows (the feed shows real content immediately) — from the
-// prototype's `#activity-stream` markup.
-export const SEED_FEED: FeedRow[] = [
-  { id: 'seed-0', type: 'ci', actor: 'ci-runner', time: '8s', segments: [{ t: 'tests passed on ' }, { t: 'feature/logs-table', mono: true }] },
-  { id: 'seed-1', type: 'review', actor: 'review-bot', time: '24s', segments: [{ t: 'approved ' }, { t: 'PR #58', mono: true }] },
-  { id: 'seed-2', type: 'seat', actor: 'bader', time: '41s', segments: [{ t: 'pushed 3 commits to ' }, { t: 'feature/logs-table', mono: true }] },
-  { id: 'seed-3', type: 'deploy', actor: 'deploy-bot', time: '1m', segments: [{ t: 'shipped preview ' }, { t: 'pr-61.wall.dev', mono: true }] },
-  { id: 'seed-4', type: 'error', actor: 'ci-runner', time: '3m', segments: [{ t: 'build ' }, { t: 'failed', danger: true }, { t: ' on ' }, { t: 'origin/main', mono: true }] },
-]
-
-// The fixed ordered sequence: push → build → tests → deploy → review → approve
-// → lint → agent → build-failed-on-main. Each entry fires a packet along the
-// (from,to) edge and prepends its event to the feed.
-export const SEQUENCE: { from: string; to: string; ev: SysEvent }[] = [
-  { from: 'bader', to: 'repo', ev: { type: 'seat', actor: 'bader', segments: [{ t: 'pushed 3 commits to ' }, { t: 'feature/logs-table', mono: true }] } },
-  { from: 'repo', to: 'ci', ev: { type: 'ci', actor: 'ci-runner', segments: [{ t: 'build started on ' }, { t: 'feature/logs-table', mono: true }] } },
-  { from: 'ci', to: 'test', ev: { type: 'ci', actor: 'ci-runner', segments: [{ t: 'running vitest suite' }] } },
-  { from: 'test', to: 'deploy', ev: { type: 'deploy', actor: 'deploy-bot', segments: [{ t: 'shipped preview ' }, { t: 'pr-61.wall.dev', mono: true }] } },
-  { from: 'repo', to: 'review', ev: { type: 'review', actor: 'review-bot', segments: [{ t: 'reviewing ' }, { t: 'PR #61', mono: true }] } },
-  { from: 'review', to: 'repo', ev: { type: 'ok', actor: 'review-bot', segments: [{ t: 'approved ' }, { t: 'PR #58', mono: true }] } },
-  { from: 'lint', to: 'ci', ev: { type: 'ci', actor: 'ci-runner', segments: [{ t: 'lint clean on ' }, { t: 'feature/kanban', mono: true }] } },
-  { from: 'agent', to: 'repo', ev: { type: 'agent', actor: 'claude-agent', segments: [{ t: 'opened ' }, { t: 'PR #62', mono: true }, { t: ' — token analytics' }] } },
-  { from: 'ci', to: 'repo', ev: { type: 'error', actor: 'ci-runner', segments: [{ t: 'build ' }, { t: 'failed', danger: true }, { t: ' on ' }, { t: 'origin/main', mono: true }] } },
-]
-
-type RNode = NodeDef & { r: number; pulse: number; flashUntil: number }
-type REdge = { a: RNode; b: RNode; glow: number }
-type Packet = { from: RNode; to: RNode; p: number }
+export type SystemGraphHandle = {
+  /** Animate one real event (ignored while paused / reduced-motion). */
+  fire: (spec: PacketSpec) => void
+  /** Repaint the static frame — used when a poll recolours nodes while paused. */
+  redraw: () => void
+  /** Cancel the rAF and detach every listener / observer. */
+  destroy: () => void
+}
 
 export type MountOptions = {
-  /** Live map of nodeId -> HEX colour, reflecting real seat/alert state. */
+  nodes: NodeDef[]
+  edges: [string, string][]
+  /** Live map of nodeId -> HEX colour reflecting real seat / alert / ci state. */
   colorsRef: { current: Record<string, string> }
-  /** Called when the sequence advances, so the panel can prepend to the feed. */
-  onEmit: (ev: SysEvent) => void
   /** Freeze gate: true when window.__wallPaused OR prefers-reduced-motion. */
   paused: () => boolean
 }
 
+type RNode = NodeDef & {
+  r: number
+  pulse: number
+  flashUntil: number
+  flashColor: string
+}
+type REdge = { a: RNode; b: RNode; glow: number }
+type Packet = { from: RNode; to: RNode; p: number; color: string }
+
 const TAU = Math.PI * 2
-const CYCLE_S = 2.2
 const FLASH_MS = 1600
+
+const TYPE_FALLBACK: Record<NodeType, string> = {
+  repo: C.primary,
+  seat: C.primary,
+  agents: C.violet,
+  ci: C.warning,
+  tripwires: C.warning,
+  discord: C.muted,
+  console: C.primary,
+}
 
 function rgb(hex: string): string {
   let h = hex.replace('#', '')
@@ -140,46 +154,53 @@ function rgb(hex: string): string {
       .split('')
       .map((c) => c + c)
       .join('')
-  const n = parseInt(h, 16)
+  const n = parseInt(h.slice(0, 6), 16)
   return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`
 }
 
 /**
- * Wire up the canvas render loop. Returns a cleanup fn that cancels the rAF and
- * removes every listener/observer. Under prefers-reduced-motion no continuous
- * loop runs — a single static frame is drawn (and redrawn on resize).
+ * Wire up the canvas render loop for one node/edge set. Returns a handle the
+ * panel drives (fire / redraw / destroy). Under prefers-reduced-motion no
+ * continuous loop runs — a static frame is drawn (and repainted on redraw /
+ * resize). When window.__wallPaused flips, the loop freezes to the static frame.
  */
 export function mountSystemGraph(
   canvas: HTMLCanvasElement,
-  { colorsRef, onEmit, paused }: MountOptions
-): () => void {
+  { nodes: nodeDefs, edges: edgeDefs, colorsRef, paused }: MountOptions
+): SystemGraphHandle {
   const ctx = canvas.getContext('2d')
-  if (!ctx) return () => {}
+  if (!ctx) return { fire() {}, redraw() {}, destroy() {} }
+  const g: CanvasRenderingContext2D = ctx
 
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
   let w = 0
   let h = 0
 
-  const nodes: RNode[] = NODES.map((n) => ({ ...n, r: n.r ?? 7, pulse: 0, flashUntil: 0 }))
+  const nodes: RNode[] = nodeDefs.map((n) => ({
+    ...n,
+    r: n.r ?? 7,
+    pulse: 0,
+    flashUntil: 0,
+    flashColor: C.danger,
+  }))
   const byId: Record<string, RNode> = {}
   nodes.forEach((n) => (byId[n.id] = n))
-  const edges: REdge[] = EDGES.map(([a, b]) => ({ a: byId[a], b: byId[b], glow: 0 }))
+  const edges: REdge[] = edgeDefs
+    .map(([a, b]) => ({ a: byId[a], b: byId[b], glow: 0 }))
+    .filter((e) => e.a && e.b)
   const packets: Packet[] = []
 
-  // Mutable loop state (declared up-front so every closure below can read it).
   let raf = 0
-  let acc = 0
   let last = 0
-  let seqI = 0
-  let staticDrawn = false
+  let needsStatic = true
+  let hover: RNode | null = null
 
   const px = (n: RNode) => n.x * w
   const py = (n: RNode) => n.y * h
-  let hover: RNode | null = null
 
   const colorOf = (n: RNode): string => {
-    if (n.flashUntil && performance.now() < n.flashUntil) return '#22c55e'
-    return colorsRef.current[n.id] || NODE_TYPE_COLOR[n.t] || '#4d8dff'
+    if (n.flashUntil && performance.now() < n.flashUntil) return n.flashColor
+    return colorsRef.current[n.id] || TYPE_FALLBACK[n.t] || C.primary
   }
 
   function resize() {
@@ -187,7 +208,7 @@ export function mountSystemGraph(
     h = canvas.clientHeight
     canvas.width = Math.floor(w * dpr)
     canvas.height = Math.floor(h * dpr)
-    ctx!.setTransform(dpr, 0, 0, dpr, 0, 0)
+    g.setTransform(dpr, 0, 0, dpr, 0, 0)
   }
 
   function drawNode(n: RNode) {
@@ -195,86 +216,89 @@ export function mountSystemGraph(
     const X = px(n)
     const Y = py(n)
     if (n.pulse > 0) {
-      ctx!.beginPath()
-      ctx!.arc(X, Y, n.r + 6 + (1 - n.pulse) * 16, 0, TAU)
-      ctx!.strokeStyle = `rgba(${rgb(col)},${(n.pulse * 0.55).toFixed(3)})`
-      ctx!.lineWidth = 2
-      ctx!.stroke()
+      g.beginPath()
+      g.arc(X, Y, n.r + 6 + (1 - n.pulse) * 16, 0, TAU)
+      g.strokeStyle = `rgba(${rgb(col)},${(n.pulse * 0.55).toFixed(3)})`
+      g.lineWidth = 2
+      g.stroke()
       n.pulse *= 0.92
       if (n.pulse < 0.03) n.pulse = 0
     }
-    ctx!.beginPath()
-    ctx!.arc(X, Y, n.r, 0, TAU)
-    ctx!.fillStyle = n.t === 'repo' ? '#101014' : `rgba(${rgb(col)},0.16)`
-    ctx!.fill()
-    ctx!.lineWidth = hover === n ? 2.6 : 2
-    ctx!.strokeStyle = col
-    ctx!.stroke()
-    ctx!.beginPath()
-    ctx!.arc(X, Y, n.r * 0.42, 0, TAU)
-    ctx!.fillStyle = col
-    ctx!.fill()
-    ctx!.font = '600 11px ui-monospace, Menlo, monospace'
-    ctx!.textAlign = 'center'
-    ctx!.textBaseline = 'top'
-    ctx!.fillStyle = hover === n ? '#f6f7f9' : 'rgba(150,155,170,0.85)'
-    ctx!.fillText(n.label, X, Y + n.r + 5)
+    g.beginPath()
+    g.arc(X, Y, n.r, 0, TAU)
+    g.fillStyle = n.t === 'repo' ? C.repoFill : `rgba(${rgb(col)},0.16)`
+    g.fill()
+    g.lineWidth = hover === n ? 2.6 : 2
+    g.strokeStyle = col
+    g.stroke()
+    g.beginPath()
+    g.arc(X, Y, n.r * 0.42, 0, TAU)
+    g.fillStyle = col
+    g.fill()
+    g.font = '600 11px ui-monospace, Menlo, monospace'
+    g.textAlign = 'center'
+    g.textBaseline = 'top'
+    g.fillStyle = hover === n ? '#f6f7f9' : 'rgba(150,155,170,0.85)'
+    g.fillText(n.label, X, Y + n.r + 5)
   }
 
   function drawEdge(e: REdge, glow: number, faint: number) {
-    ctx!.beginPath()
-    ctx!.moveTo(px(e.a), py(e.a))
-    ctx!.lineTo(px(e.b), py(e.b))
+    g.beginPath()
+    g.moveTo(px(e.a), py(e.a))
+    g.lineTo(px(e.b), py(e.b))
     const hl = !!hover && (e.a === hover || e.b === hover)
-    const g = Math.max(glow, hl ? 0.6 : 0)
-    ctx!.strokeStyle = `rgba(120,140,180,${(faint + g * 0.5).toFixed(3)})`
-    ctx!.lineWidth = hl ? 1.6 : 1
-    ctx!.stroke()
+    const gg = Math.max(glow, hl ? 0.6 : 0)
+    g.strokeStyle = `rgba(120,140,180,${(faint + gg * 0.5).toFixed(3)})`
+    g.lineWidth = hl ? 1.6 : 1
+    g.stroke()
   }
 
   function drawStatic() {
-    ctx!.clearRect(0, 0, w, h)
+    g.clearRect(0, 0, w, h)
     edges.forEach((e) => drawEdge(e, 0, 0.14))
     nodes.forEach(drawNode)
   }
 
-  function fire() {
-    const s = SEQUENCE[seqI % SEQUENCE.length]
-    seqI += 1
-    const from = byId[s.from]
-    const to = byId[s.to]
-    packets.push({ from, to, p: 0 })
+  function fire(spec: PacketSpec) {
+    if (paused()) return
+    const from = byId[spec.from]
+    const to = byId[spec.to]
+    if (!from || !to) return
+    packets.push({ from, to, p: 0, color: spec.color })
     const e = edges.find(
       (x) => (x.a === from && x.b === to) || (x.a === to && x.b === from)
     )
     if (e) e.glow = 1
-    if (to.id === 'deploy') to.flashUntil = performance.now() + FLASH_MS
-    onEmit(s.ev)
+    spec.pulse?.forEach((id) => {
+      const nn = byId[id]
+      if (nn) nn.pulse = 1
+    })
+    if (spec.flash) {
+      const nn = byId[spec.flash.id]
+      if (nn) {
+        nn.flashUntil = performance.now() + FLASH_MS
+        nn.flashColor = spec.flash.color
+      }
+    }
   }
 
   function frame(ts: number) {
     raf = requestAnimationFrame(frame)
-    // Freeze to the static state when paused (flag or reduced-motion) but keep
-    // the loop alive so it resumes the instant the flag clears. Draw the static
-    // frame once on entering the paused state, not every tick.
+    // Freeze to the static frame while paused (flag or reduced-motion) but keep
+    // the loop alive so it resumes instantly. Repaint only when marked dirty.
     if (paused()) {
-      if (!staticDrawn) {
+      if (needsStatic) {
         drawStatic()
-        staticDrawn = true
+        needsStatic = false
       }
       last = 0
       return
     }
-    staticDrawn = false
+    needsStatic = true // re-entering pause will repaint with the latest colours
     if (!last) last = ts
     const dt = Math.min((ts - last) / 1000, 0.05)
     last = ts
-    acc += dt
-    ctx!.clearRect(0, 0, w, h)
-    if (acc > CYCLE_S) {
-      acc = 0
-      fire()
-    }
+    g.clearRect(0, 0, w, h)
     edges.forEach((e) => {
       drawEdge(e, e.glow, 0.09)
       e.glow *= 0.94
@@ -290,14 +314,13 @@ export function mountSystemGraph(
       }
       const x = px(pk.from) + (px(pk.to) - px(pk.from)) * pk.p
       const y = py(pk.from) + (py(pk.to) - py(pk.from)) * pk.p
-      const col = colorOf(pk.to)
-      ctx!.beginPath()
-      ctx!.arc(x, y, 3, 0, TAU)
-      ctx!.fillStyle = col
-      ctx!.shadowColor = col
-      ctx!.shadowBlur = 10
-      ctx!.fill()
-      ctx!.shadowBlur = 0
+      g.beginPath()
+      g.arc(x, y, 3, 0, TAU)
+      g.fillStyle = pk.color
+      g.shadowColor = pk.color
+      g.shadowBlur = 10
+      g.fill()
+      g.shadowBlur = 0
     }
     nodes.forEach(drawNode)
   }
@@ -327,6 +350,7 @@ export function mountSystemGraph(
     cancelAnimationFrame(raf)
     raf = 0
     last = 0
+    needsStatic = true
     if (mql.matches) {
       drawStatic()
       return
@@ -342,9 +366,18 @@ export function mountSystemGraph(
     start()
   }
 
+  function redraw() {
+    // Repaint the static frame with the current colour ref. Needed when the wall
+    // is paused / reduced-motion and a poll changed node colours (the animated
+    // loop repaints on its own, so just mark it dirty there).
+    if (mql.matches || paused()) drawStatic()
+    else needsStatic = true
+  }
+
   const ro = new ResizeObserver(() => {
     resize()
-    if (paused()) drawStatic()
+    if (mql.matches || paused()) drawStatic()
+    else needsStatic = true
   })
 
   canvas.addEventListener('mousemove', onMove)
@@ -354,11 +387,15 @@ export function mountSystemGraph(
   resize()
   start()
 
-  return () => {
-    cancelAnimationFrame(raf)
-    canvas.removeEventListener('mousemove', onMove)
-    canvas.removeEventListener('mouseleave', onLeave)
-    mql.removeEventListener('change', onReduceChange)
-    ro.disconnect()
+  return {
+    fire,
+    redraw,
+    destroy() {
+      cancelAnimationFrame(raf)
+      canvas.removeEventListener('mousemove', onMove)
+      canvas.removeEventListener('mouseleave', onLeave)
+      mql.removeEventListener('change', onReduceChange)
+      ro.disconnect()
+    },
   }
 }

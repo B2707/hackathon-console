@@ -95,7 +95,13 @@ export function TeamBoard({
 
         <EventLog events={events} />
 
-        <SystemGraph seats={seats} alerts={alerts} repo={repo} now={now} />
+        <SystemGraph
+          seats={seats}
+          alerts={alerts}
+          ticker={data?.ticker ?? []}
+          repo={repo}
+          now={now}
+        />
 
         <PlanBoard board={board} now={now} />
       </div>
