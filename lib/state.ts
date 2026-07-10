@@ -20,8 +20,18 @@ export type BoardPr = {
   updatedAt: string
 }
 export type Board = { fetchedAt: number; issues: BoardIssue[]; prs: BoardPr[] }
+export type Alert = {
+  id: string
+  severity: 'P0' | 'P1'
+  wire: string
+  detail: string
+  at: number
+}
 
 const TICKER_MAX = 100
+// Newest-first alerts list, capped at 50 stored; the wall reads the newest 20.
+const ALERTS_MAX = 50
+const ALERTS_READ = 20
 
 export async function recordBeat(beat: SeatBeat): Promise<void> {
   await redis().hset('seats', { [beat.seat]: beat })
@@ -40,6 +50,19 @@ export async function pushEvent(event: TickerEvent): Promise<void> {
 
 export async function getTicker(): Promise<TickerEvent[]> {
   return await redis().lrange<TickerEvent>('ticker', 0, TICKER_MAX - 1)
+}
+
+// Live Alerts: P0/P1 tripwire fires surfaced on the wall. LPUSH newest-first,
+// LTRIM to the cap. Mirrors the ticker list; the Upstash client JSON-encodes
+// the object on push and decodes it on lrange.
+export async function pushAlert(alert: Alert): Promise<void> {
+  const r = redis()
+  await r.lpush('alerts', alert)
+  await r.ltrim('alerts', 0, ALERTS_MAX - 1)
+}
+
+export async function getAlerts(): Promise<Alert[]> {
+  return await redis().lrange<Alert>('alerts', 0, ALERTS_READ - 1)
 }
 
 export async function getBoard(): Promise<Board | null> {

@@ -1,7 +1,13 @@
-import { checkTeamSecret } from '@/lib/auth'
 import { fetchBoard, hasGithubToken } from '@/lib/github'
 import { redis } from '@/lib/redis'
-import { getBoard, getRepo, getSeats, getTicker, setBoard } from '@/lib/state'
+import {
+  getAlerts,
+  getBoard,
+  getRepo,
+  getSeats,
+  getTicker,
+  setBoard,
+} from '@/lib/state'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,11 +18,9 @@ const STALE_MS_WITH_TOKEN = 60_000
 const STALE_MS_NO_TOKEN = 300_000
 const LOCK_TTL_S = 30
 
-export async function GET(req: Request) {
-  if (!checkTeamSecret(req)) {
-    return Response.json({ error: 'unauthorized' }, { status: 401 })
-  }
-
+// GET /api/state is public — the wall is a read-only view of team state.
+// Write endpoints (heartbeat, webhook) stay authenticated server-side.
+export async function GET() {
   const [board, repo] = await Promise.all([getBoard(), getRepo()])
   const staleMs = hasGithubToken() ? STALE_MS_WITH_TOKEN : STALE_MS_NO_TOKEN
   const isStale = !board || Date.now() - board.fetchedAt > staleMs
@@ -41,13 +45,18 @@ export async function GET(req: Request) {
     }
   }
 
-  const [seats, ticker] = await Promise.all([getSeats(), getTicker()])
+  const [seats, ticker, alerts] = await Promise.all([
+    getSeats(),
+    getTicker(),
+    getAlerts(),
+  ])
   return Response.json({
     now: Date.now(),
     repo,
     seats,
     board: freshBoard,
     ticker,
+    alerts,
     ...(reconcileError ? { reconcileError } : {}),
   })
 }
