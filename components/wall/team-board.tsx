@@ -55,7 +55,7 @@ export function TeamBoard({
       {/* Fixed decorative layer (below content). Body gradient is in globals.css. */}
       <BackgroundCanvas />
 
-      <div className="wall relative z-[1] mx-auto flex max-w-[1440px] flex-col gap-7 px-10 pb-[90px] pt-[30px] max-md:px-[18px]">
+      <main className="wall relative z-[1] mx-auto flex max-w-[1440px] flex-col gap-7 px-10 pb-[90px] pt-[30px] max-md:px-[18px]">
         <Hero
           repo={repo}
           now={now}
@@ -104,7 +104,7 @@ export function TeamBoard({
         />
 
         <EventLog events={events} />
-      </div>
+      </main>
 
       {/* Host-integrated tweaks (hidden by default). */}
       <TweaksPanel />
