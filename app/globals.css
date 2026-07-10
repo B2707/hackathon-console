@@ -1,50 +1,65 @@
 @import 'tailwindcss';
 
 /*
- * Dark-first console theme. Values keep the original wall palette
- * (bg #0b0f14, panel #121820, text #dce6f2) but expose them through the
- * semantic shadcn token layer so primitives (card/badge/table/...) inherit it.
+ * Team Board — dark "mission control" theme.
+ *
+ * The palette is ported verbatim from the design handoff
+ * (design_handoff_team_board): true-black background, electric-blue primary,
+ * one status language (success / warning / danger) plus violet + rose accents.
+ * Values are exposed through the semantic shadcn token layer so the existing
+ * primitives (card / badge / button / table / ...) inherit the look for free.
  */
 
 :root,
 .dark {
-  --background: #0b0f14;
-  --foreground: #dce6f2;
+  /* --- handoff core palette ------------------------------------------- */
+  --background: #050506;
+  --foreground: #f6f7f9;
 
-  --card: #121820;
-  --card-foreground: #dce6f2;
+  --card: #0d0d10;
+  --card-foreground: #f6f7f9;
 
-  --popover: #141c26;
-  --popover-foreground: #dce6f2;
+  --popover: #131317;
+  --popover-foreground: #f6f7f9;
 
-  --primary: #2dd4bf;
+  --primary: #4d8dff;
   --primary-foreground: #04120f;
 
-  --secondary: #182130;
-  --secondary-foreground: #dce6f2;
+  --muted: #16161a;
+  --muted-foreground: #7c7d85;
 
-  --muted: #182130;
-  --muted-foreground: #8195aa;
+  --accent: #1a1a1f;
+  --accent-foreground: #f6f7f9;
 
-  --accent: #1b2534;
-  --accent-foreground: #eef4fb;
-
-  --destructive: #f87171;
-  --destructive-foreground: #0b0f14;
-
-  --border: #223044;
-  --input: #26344a;
-  --ring: #2dd4bf;
+  --border: #232327;
+  --input: #2a2a31;
+  --ring: #4d8dff;
 
   /* One status language, mapped to ops severity. */
-  --success: #34d399;
+  --success: #22c55e;
   --success-foreground: #04120d;
   --warning: #fbbf24;
   --warning-foreground: #1a1204;
   --danger: #f87171;
   --danger-foreground: #14060a;
 
-  --radius: 0.75rem;
+  /* Extra data-viz / model accents from the handoff. */
+  --violet: #a78bfa;
+  --rose: #fb7185;
+
+  /* Secondary + destructive kept so shadcn primitives resolve; pointed at the
+     handoff palette (secondary == subtle accent surface, destructive == danger). */
+  --secondary: #16161a;
+  --secondary-foreground: #f6f7f9;
+  --destructive: #f87171;
+  --destructive-foreground: #14060a;
+
+  --radius: 1.25rem;
+
+  /* Elevation ladder from the handoff. */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 28px -14px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 1px 2px rgba(0, 0, 0, 0.35), 0 24px 60px -22px rgba(0, 0, 0, 0.7);
 }
 
 @theme inline {
@@ -75,6 +90,10 @@
   --color-danger: var(--danger);
   --color-danger-foreground: var(--danger-foreground);
 
+  /* New handoff accents, now available as bg-violet / text-rose / etc. */
+  --color-violet: var(--violet);
+  --color-rose: var(--rose);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -96,15 +115,40 @@
     color-scheme: dark;
   }
 
+  /*
+   * True-black canvas with a soft top blue radial glow and a faint diagonal
+   * crosshatch — the handoff body background. The falling-grid <canvas> layer
+   * (BackgroundCanvas) sits above this and below the wall content.
+   */
   body {
-    background-color: var(--background);
+    background:
+      radial-gradient(
+        1100px 560px at 50% -14%,
+        rgba(77, 141, 255, 0.1),
+        transparent 60%
+      ),
+      repeating-linear-gradient(
+        45deg,
+        rgba(255, 255, 255, 0.012) 0 1px,
+        transparent 1px 26px
+      ),
+      repeating-linear-gradient(
+        -45deg,
+        rgba(255, 255, 255, 0.012) 0 1px,
+        transparent 1px 26px
+      ),
+      var(--background);
     color: var(--foreground);
     font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
+    min-height: 100vh;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
 
-  /* Thin, calm scrollbars for the dense lanes / ticker. */
+  /* Thin, calm scrollbars for the dense lanes / tables. */
   * {
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
@@ -122,7 +166,86 @@
   }
 }
 
-/* Shimmering label for the top-bar live indicator while a poll is in flight. */
+/*
+ * ============================================================
+ * Keyframes — ported from the handoff prototype. Panels drive these via
+ * utility classes / inline animation shorthands (e.g. `animate-[ping_1.7s...]`).
+ * ============================================================
+ */
+
+/* Pulsing "live / fresh" dots. */
+@keyframes soft-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Expanding ring for alerts / active plan node. */
+@keyframes ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  80%,
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+/* Sweeping highlight for the LIVE tag. */
+@keyframes shimmer {
+  0% {
+    background-position: 220% 0;
+  }
+  100% {
+    background-position: -220% 0;
+  }
+}
+
+/* Spinner for "test running" chips. */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Fade + slide used when an expandable detail panel mounts. */
+@keyframes revealIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Flowing dash for animated activity beams. */
+@keyframes dashflow {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+
+/* Entrance for a freshly-prepended event-stream row. */
+@keyframes evin {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Existing text-shimmer helper for the top-bar live indicator (kept). */
 @keyframes text-shimmer {
   0% {
     background-position: 100% 50%;
@@ -145,7 +268,15 @@
   animation: text-shimmer 1.6s linear infinite;
 }
 
-/* Respect reduced-motion: framer-motion also honors this, belt-and-braces. */
+/* revealIn helper class for the expandable primitive's detail slot. */
+.reveal-in {
+  animation: revealIn 0.26s ease;
+}
+
+/*
+ * Respect reduced-motion everywhere: framer-motion also honours this, but this
+ * is the belt-and-braces guard for the CSS-driven decorative loops above.
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

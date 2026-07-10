@@ -146,7 +146,7 @@ export function seatFreshnessFraction(
 
 // --- per-seat identity accent (ring color on the avatar) --------------------
 const SEAT_ACCENTS: Record<string, string> = {
-  bader: '#2dd4bf',
+  bader: '#4d8dff',
   sjp: '#fb7185',
   amr: '#fbbf24',
   adham: '#a78bfa',
