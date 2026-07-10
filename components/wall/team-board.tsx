@@ -10,9 +10,11 @@ import { PlanBoard } from './plan-board'
 import { SystemGraph } from './system-graph'
 import { TeamSeats } from './team-seats'
 import { TweaksPanel } from './tweaks-panel'
+import { ROSTER } from '@/lib/board'
 import { mapTickerToEvents } from '@/lib/event-log'
 import { SAMPLE_LEADERBOARD, SAMPLE_MANGOOLI } from '@/lib/sample'
 import type { StateResponse } from '@/lib/types'
+import type { ScoreboardData } from '@/hooks/use-scoreboard'
 
 /**
  * Team Board shell — the top-level composition for the mission-control wall.
@@ -30,6 +32,8 @@ export type TeamBoardProps = {
   isSyncing: boolean
   /** Force an immediate re-poll. */
   onRefresh: () => void
+  /** GitHub-derived Leader/Mangooli rows; null until first poll (→ SAMPLE). */
+  scoreboard: ScoreboardData | null
 }
 
 export function TeamBoard({
@@ -37,6 +41,7 @@ export function TeamBoard({
   error,
   isSyncing,
   onRefresh,
+  scoreboard,
 }: TeamBoardProps) {
   const surfacedError =
     error ??
@@ -49,6 +54,19 @@ export function TeamBoard({
   const alerts = data?.alerts ?? []
   const board = data?.board ?? null
   const events = mapTickerToEvents(data?.ticker ?? [])
+
+  // Use real GitHub rows only once EVERY roster seat has a configured handle —
+  // otherwise unmapped seats would sit at zero and read as a broken board. Until
+  // then (and before the first scoreboard poll) fall back to SAMPLE data.
+  // `scoreboard!` is safe: boardsConfigured is only true when scoreboard != null.
+  const boardsConfigured =
+    scoreboard != null &&
+    scoreboard.leaderboard.length > 0 &&
+    ROSTER.every((seat) => scoreboard.configured.includes(seat))
+  const leaderboardRows = boardsConfigured
+    ? scoreboard!.leaderboard
+    : SAMPLE_LEADERBOARD
+  const mangooliRows = boardsConfigured ? scoreboard!.mangooli : SAMPLE_MANGOOLI
 
   return (
     <div className="relative min-h-screen scroll-smooth">
@@ -87,8 +105,8 @@ export function TeamBoard({
 
         {/* Duo row: Leader Board | Mangooli Board (stacks ≤1000px). */}
         <div className="duo-row grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
-          <LeaderBoard rows={SAMPLE_LEADERBOARD} />
-          <MangooliBoard rows={SAMPLE_MANGOOLI} />
+          <LeaderBoard rows={leaderboardRows} />
+          <MangooliBoard rows={mangooliRows} />
         </div>
 
         <LiveAlerts alerts={alerts} now={now} />

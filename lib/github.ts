@@ -74,3 +74,55 @@ export async function fetchBoard(repo: string): Promise<Board> {
   }))
   return { fetchedAt: Date.now(), issues, prs }
 }
+
+// --- aggregate helpers (Phase 2 scoreboard) ---------------------------------
+// These power lib/scoreboard.ts. They read only total_count / a single Actions
+// page, so each is one cheap call. Search shares a 30 req/min (authed) budget,
+// so callers cache hard and swallow per-metric failures rather than break the
+// whole board.
+
+type SearchResult = { total_count?: number }
+
+/** Issues/PRs Search API match count. `per_page=1` — we read only total_count. */
+export async function searchIssuesCount(q: string): Promise<number> {
+  const data = (await ghJson(
+    `/search/issues?q=${encodeURIComponent(q)}&per_page=1`
+  )) as SearchResult
+  return data.total_count ?? 0
+}
+
+/** Commit Search API match count (separate endpoint; `author:` = GitHub login). */
+export async function searchCommitCount(q: string): Promise<number> {
+  const data = (await ghJson(
+    `/search/commits?q=${encodeURIComponent(q)}&per_page=1`
+  )) as SearchResult
+  return data.total_count ?? 0
+}
+
+/** A completed Actions run, flattened to the fields we attribute CI outcomes by. */
+export type WorkflowRunLite = {
+  conclusion: string | null
+  actor: string | null
+  event: string
+  headBranch: string | null
+}
+
+type GhRun = {
+  conclusion: string | null
+  actor?: { login?: string }
+  event?: string
+  head_branch?: string | null
+}
+
+/** Most-recent completed workflow runs (one page of 100). */
+export async function fetchRecentRuns(repo: string): Promise<WorkflowRunLite[]> {
+  const data = (await ghJson(
+    `/repos/${repo}/actions/runs?per_page=100&status=completed`
+  )) as { workflow_runs?: GhRun[] }
+  return (data.workflow_runs ?? []).map((r) => ({
+    conclusion: r.conclusion,
+    actor: r.actor?.login ?? null,
+    event: r.event ?? '',
+    headBranch: r.head_branch ?? null,
+  }))
+}
