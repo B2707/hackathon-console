@@ -1,6 +1,10 @@
 'use client'
 
+import * as React from 'react'
+import { Trophy } from 'lucide-react'
+
 import { Card } from '@/components/ui/card'
+import { BoardHeader, BoardRow } from '@/components/wall/board-row'
 
 /**
  * Leader Board — ranks by shipping (handoff `team-board.html` lines 1942–1986).
@@ -12,8 +16,6 @@ import { Card } from '@/components/ui/card'
  *
  * DATA: all SAMPLE for now (lib/sample.SAMPLE_LEADERBOARD). // TODO: GitHub
  * aggregate API (PRs, commits, issues, reviews, Actions timing).
- *
- * STUB: renders the section header only.
  */
 export type LeaderRow = {
   /** 1-based rank; drives the medal (1=gold, 2=silver, 3=bronze, else none). */
@@ -37,20 +39,58 @@ export type LeaderBoardProps = {
   rows: LeaderRow[]
 }
 
-export function LeaderBoard({ rows }: LeaderBoardProps) {
+/** One expanded-detail stat (handoff `.sa-tile`). */
+function StatTile({ value, label }: { value: React.ReactNode; label: string }) {
   return (
-    <Card className="gap-0 p-5">
-      <div className="flex items-center gap-3">
-        <span className="size-9 flex-none rounded-[10px] border border-primary/25 bg-primary/10" />
-        <div className="min-w-0">
-          <h2 className="text-[1.06rem] font-[650] leading-tight tracking-tight text-foreground">
-            Leader Board
-          </h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {rows.length} contributors ·{' '}
-            <span className="text-primary">building</span>
-          </p>
-        </div>
+    <div className="flex flex-col gap-0.5 rounded-[10px] border border-border bg-muted px-2.5 py-[9px]">
+      <span className="font-mono text-base font-bold text-foreground tabular-nums">
+        {value}
+      </span>
+      <span className="text-[0.62rem] uppercase tracking-[0.05em] text-muted-foreground">
+        {label}
+      </span>
+    </div>
+  )
+}
+
+export function LeaderBoard({ rows }: LeaderBoardProps) {
+  const totalPrs = rows.reduce((sum, r) => sum + r.prsMerged, 0)
+  const ordered = [...rows].sort((a, b) => a.rank - b.rank)
+
+  return (
+    <Card className="gap-0 p-4">
+      <BoardHeader
+        icon={<Trophy className="size-[19px]" />}
+        tone="teal"
+        title="Leader Board"
+        sub="Who ships the most · click a row"
+        count={totalPrs}
+        unit="PRs merged"
+      />
+      <div className="flex flex-col">
+        {ordered.map((row) => (
+          <BoardRow
+            key={row.seat}
+            rank={row.rank}
+            seat={row.seat}
+            subline={row.subline}
+            unit="PRs merged"
+            metric={
+              <span className="font-mono text-[1.25rem] font-extrabold leading-none text-primary tabular-nums">
+                {row.prsMerged}
+              </span>
+            }
+          >
+            <div className="grid grid-cols-3 gap-2 pt-1.5 pr-1.5 pb-3 pl-[42px]">
+              <StatTile value={row.prsMerged} label="PRs merged" />
+              <StatTile value={row.commits} label="commits" />
+              <StatTile value={row.issuesClosed} label="issues closed" />
+              <StatTile value={row.reviewsGiven} label="reviews given" />
+              <StatTile value={row.timeActive} label="time active" />
+              <StatTile value={row.avgReview} label="avg review" />
+            </div>
+          </BoardRow>
+        ))}
       </div>
     </Card>
   )

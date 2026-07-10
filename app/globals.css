@@ -286,3 +286,18 @@
     transition-duration: 0.001ms !important;
   }
 }
+
+/*
+ * Tweaks-panel body-class toggles (set by components/wall/tweaks-panel.tsx).
+ * These are the CSS backing the panel's "layout" + "density" controls.
+ */
+/* "Stacked" forces the Leader / Mangooli duo row into one column. */
+body.layout-stacked .duo-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+/* "Compact" tightens the wall's vertical rhythm + top padding. */
+body.compact .wall {
+  gap: 16px;
+  padding-top: 16px;
+  padding-bottom: 48px;
+}
