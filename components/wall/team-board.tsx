@@ -93,7 +93,7 @@ export function TeamBoard({
 
         <LiveAlerts alerts={alerts} now={now} />
 
-        <EventLog events={events} />
+        <PlanBoard board={board} now={now} />
 
         <SystemGraph
           seats={seats}
@@ -103,7 +103,7 @@ export function TeamBoard({
           now={now}
         />
 
-        <PlanBoard board={board} now={now} />
+        <EventLog events={events} />
       </div>
 
       {/* Host-integrated tweaks (hidden by default). */}

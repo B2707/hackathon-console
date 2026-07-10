@@ -81,7 +81,7 @@ export function LiveAlerts({ alerts, now }: LiveAlertsProps) {
       {alerts.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex max-h-[560px] flex-col gap-3 overflow-y-auto pr-1">
           {alerts.map((alert, index) => (
             <AlertCard
               key={alert.id}
