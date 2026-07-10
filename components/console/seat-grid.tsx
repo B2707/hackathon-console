@@ -14,6 +14,7 @@ import {
   initials,
   seatAccent,
   seatFreshnessFraction,
+  seatGithubLogin,
   seatStatus,
   seatStatusTone,
   timeAgo,
@@ -80,7 +81,7 @@ function SeatCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="truncate font-mono text-sm font-medium">
-              {name}
+              {seatGithubLogin(name)}
             </span>
           </div>
           <span className="text-muted-foreground text-xs">

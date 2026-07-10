@@ -49,9 +49,9 @@ const MILESTONES: Milestone[] = [
     tag: { text: 'In progress', kind: 'active' },
     desc: 'Port every panel to the dark shadcn system with reaviz charts.',
     subs: [
-      { checked: true, text: 'Charts row (area + stacked)', who: 'bader' },
-      { checked: true, text: 'Kanban + plan stepper', who: 'sjp' },
-      { checked: false, text: 'Interactive logs table', who: 'bader' },
+      { checked: true, text: 'Charts row (area + stacked)', who: 'B2707' },
+      { checked: true, text: 'Kanban + plan stepper', who: 'MohammadESteitieh' },
+      { checked: false, text: 'Interactive logs table', who: 'B2707' },
     ],
   },
   {

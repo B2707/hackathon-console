@@ -1,7 +1,14 @@
 'use client'
 
 import type { Board } from '@/lib/types'
-import { LANES, initials, issuesByLane, laneFor, seatAccent } from '@/lib/board'
+import {
+  LANES,
+  initials,
+  issuesByLane,
+  laneFor,
+  seatAccent,
+  seatGithubLogin,
+} from '@/lib/board'
 
 /**
  * Shared data + tiny presentational helpers for the Plan & Board panel
@@ -142,7 +149,7 @@ const SAMPLE_DONE: PlanCard[] = [
     id: '#1',
     title: 'Scaffold repo & CI',
     labels: ['setup'],
-    who: 'bader',
+    who: 'B2707',
     url: 'https://github.com/B2707/hackathon-console/pull/1',
     desc: 'Template cloned, Actions green, seats provisioned.',
   },
@@ -150,7 +157,7 @@ const SAMPLE_DONE: PlanCard[] = [
     id: '#12',
     title: 'Seat health gauges',
     labels: ['frontend'],
-    who: 'sjp',
+    who: 'MohammadESteitieh',
     url: 'https://github.com/B2707/hackathon-console/pull/12',
     desc: 'Ring gauges + resource meters rendered from the heartbeat feed.',
   },
@@ -158,7 +165,7 @@ const SAMPLE_DONE: PlanCard[] = [
     id: '#8',
     title: 'Nav pill + hero',
     labels: ['design'],
-    who: 'mohammad',
+    who: 'saidel04',
     url: 'https://github.com/B2707/hackathon-console/pull/8',
     desc: 'Sticky nav pill and the Team Board hero header.',
   },
@@ -206,7 +213,7 @@ export function PlanAvatar({ name, size = 24 }: { name: string; size?: number })
         background: `${accent}24`, // ~14% tint via hex8 alpha
         borderColor: accent,
       }}
-      title={name}
+      title={seatGithubLogin(name)}
     >
       {initials(name)}
     </span>

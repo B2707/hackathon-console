@@ -5,7 +5,15 @@ export const POLL_MS = 15_000
 export const FRESH_MS = 10 * 60_000
 export const WARM_MS = 30 * 60_000
 
-export const ROSTER = ['bader', 'sjp', 'amr', 'mohammad'] as const
+// Seat keys are LOWERCASED GitHub usernames (the heartbeat seat regex is
+// lowercase-only: /^[a-z][a-z0-9-]{0,19}$/). Display labels are the
+// proper-cased logins — see seatGithubLogin below.
+export const ROSTER = [
+  'b2707',
+  'mohammadesteitieh',
+  'amrooosh',
+  'saidel04',
+] as const
 
 // --- lane canon -------------------------------------------------------------
 // Lane precedence mirrors the template's label semantics: an escalation or a
@@ -145,11 +153,12 @@ export function seatFreshnessFraction(
 }
 
 // --- per-seat identity accent (ring color on the avatar) --------------------
+// Positional colors carried over from the original four seats.
 const SEAT_ACCENTS: Record<string, string> = {
-  bader: '#4d8dff',
-  sjp: '#fb7185',
-  amr: '#fbbf24',
-  mohammad: '#a78bfa', // inherited from the Adham seat it replaces
+  b2707: '#4d8dff',
+  mohammadesteitieh: '#fb7185',
+  amrooosh: '#fbbf24',
+  saidel04: '#a78bfa',
 }
 
 // Fixed palette for any seat outside the roster — hashed so a given handle
@@ -165,7 +174,10 @@ const EXTRA_PALETTE = [
 ]
 
 export function seatAccent(name: string): string {
-  if (SEAT_ACCENTS[name]) return SEAT_ACCENTS[name]
+  // Lowercased lookup so live GitHub logins (e.g. PR author "B2707") land on
+  // the same accent as their lowercase seat key.
+  const key = name.toLowerCase()
+  if (SEAT_ACCENTS[key]) return SEAT_ACCENTS[key]
   let hash = 0
   for (let i = 0; i < name.length; i += 1) {
     hash = (hash * 31 + name.charCodeAt(i)) >>> 0
@@ -173,18 +185,20 @@ export function seatAccent(name: string): string {
   return EXTRA_PALETTE[hash % EXTRA_PALETTE.length]
 }
 
-// --- per-seat GitHub login (drives github.com/<login>.png avatar URLs) ------
-// Client-safe (unlike lib/scoreboard.ts's SEAT_HANDLES, which is server-only).
-// Unmapped seats fall back to using the seat name as the login, which 404s
-// gracefully to the AvatarFallback initials — same as before this was wired.
+// --- seat key → proper-cased GitHub login ------------------------------------
+// Doubles as the UI display label ("just use github usernames") and the
+// github.com/<login>.png avatar URL segment. Client-safe (unlike
+// lib/scoreboard.ts's SEAT_HANDLES, which is server-only). Unmapped extras
+// fall back to the raw seat name, which 404s gracefully to initials.
 const SEAT_GITHUB_LOGIN: Record<string, string> = {
-  bader: 'B2707',
-  sjp: 'saidel04',
-  amr: 'Amrooosh',
+  b2707: 'B2707',
+  mohammadesteitieh: 'MohammadESteitieh',
+  amrooosh: 'Amrooosh',
+  saidel04: 'saidel04',
 }
 
 export function seatGithubLogin(name: string): string {
-  return SEAT_GITHUB_LOGIN[name] ?? name
+  return SEAT_GITHUB_LOGIN[name.toLowerCase()] ?? name
 }
 
 export function initials(name: string): string {

@@ -12,17 +12,15 @@ import {
   searchIssuesCount,
 } from './github'
 
-// Seat → GitHub login. bader, sjp, and amr are known; mohammad is a TODO seam
-// (Mohammad replaced Adham on the roster; the handle he gave was invalid).
-// Until a seat has a real handle it is "unconfigured": it is skipped here, and
-// the wall keeps showing SAMPLE data for the whole board (see
-// components/wall/team-board and app/api/scoreboard/route.ts) rather than a
-// half-real board.
+// Seat key (lowercased GitHub username) → proper-cased GitHub login. All four
+// seats are configured, so the wall's Leader/Mangooli boards flip from SAMPLE
+// to real GitHub aggregates (components/wall/team-board requires every roster
+// seat configured before switching off SAMPLE).
 export const SEAT_HANDLES: Record<string, string> = {
-  bader: 'B2707',
-  sjp: 'saidel04',
-  amr: 'Amrooosh',
-  mohammad: '', // TODO: set Mohammad's GitHub handle
+  b2707: 'B2707',
+  mohammadesteitieh: 'MohammadESteitieh',
+  amrooosh: 'Amrooosh',
+  saidel04: 'saidel04',
 }
 
 export type SeatStats = {

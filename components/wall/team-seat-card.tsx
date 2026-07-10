@@ -11,6 +11,7 @@ import {
   type SeatStatus,
   initials,
   seatAccent,
+  seatGithubLogin,
   seatStatus,
   timeAgo,
 } from '@/lib/board'
@@ -54,7 +55,7 @@ type SeatSample = {
 // SAMPLE presentation data, mirroring the prototype's hardcoded seats.
 // TODO: real data — replace with GitHub aggregate + Anthropic Usage feeds.
 const SAMPLE: Record<string, SeatSample> = {
-  bader: {
+  b2707: {
     work: 'green',
     health: 92,
     situation: 'Shipping — 2 PRs in review, CI green',
@@ -66,7 +67,7 @@ const SAMPLE: Record<string, SeatSample> = {
     spend: '$128',
     task: 'Rebuild wall in shadcn · WALL-27',
   },
-  sjp: {
+  mohammadesteitieh: {
     work: 'green',
     health: 80,
     situation: 'Steady — batch drill running',
@@ -78,7 +79,7 @@ const SAMPLE: Record<string, SeatSample> = {
     spend: '$84',
     task: 'Batch drill simulate=all · OPS-05',
   },
-  amr: {
+  amrooosh: {
     work: 'amber',
     health: 35,
     situation: 'At risk — heartbeat stale · PR #42 awaiting review',
@@ -90,7 +91,7 @@ const SAMPLE: Record<string, SeatSample> = {
     spend: '$61',
     task: 'Seat heartbeat flake · OPS-03',
   },
-  mohammad: {
+  saidel04: {
     work: 'red',
     health: 5,
     situation: 'Blocked — build red on main',
@@ -190,6 +191,7 @@ export function SeatCard({
   const sample = sampleFor(name)
   const { work } = sample
   const accent = seatAccent(name)
+  const label = seatGithubLogin(name)
   const status = seatStatus(beat?.at, now)
   const presence = beat ? `active ${timeAgo(beat.at, now)} ago` : 'no heartbeat yet'
 
@@ -229,8 +231,8 @@ export function SeatCard({
             </div>
 
             <div className="flex min-w-0 flex-col gap-[3px]">
-              <span className="font-mono text-[0.92rem] font-semibold text-foreground">
-                {name}
+              <span className="truncate font-mono text-[0.92rem] font-semibold text-foreground">
+                {label}
               </span>
               <span
                 className={cn(
@@ -304,7 +306,7 @@ export function SeatCard({
             unit="commits"
             metric="Commits / hr"
             height={44}
-            ariaLabel={`${name} commits per hour, last 8 hours`}
+            ariaLabel={`${label} commits per hour, last 8 hours`}
           />
         </div>
       </div>

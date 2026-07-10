@@ -74,7 +74,7 @@ export function ActivityBeams({ seats, repo, now }: ActivityBeamsProps) {
                 >
                   <AvatarImage
                     src={`https://github.com/${seatGithubLogin(name)}.png?size=64`}
-                    alt={name}
+                    alt={seatGithubLogin(name)}
                   />
                   <AvatarFallback
                     className="text-[10px]"
@@ -83,7 +83,9 @@ export function ActivityBeams({ seats, repo, now }: ActivityBeamsProps) {
                     {initials(name)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="font-mono text-xs">{name}</span>
+                <span className="font-mono text-xs">
+                  {seatGithubLogin(name)}
+                </span>
               </div>
             )
           })}

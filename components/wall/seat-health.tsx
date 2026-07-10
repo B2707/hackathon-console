@@ -83,7 +83,7 @@ function SeatCard({
             >
               <AvatarImage
                 src={`https://github.com/${seatGithubLogin(name)}.png?size=88`}
-                alt={name}
+                alt={seatGithubLogin(name)}
               />
               <AvatarFallback style={{ color: accent }}>
                 {initials(name)}
@@ -94,7 +94,9 @@ function SeatCard({
         </Badge>
 
         <div className="min-w-0 flex-1">
-          <div className="truncate font-mono text-sm font-medium">{name}</div>
+          <div className="truncate font-mono text-sm font-medium">
+            {seatGithubLogin(name)}
+          </div>
           <span className="text-xs text-muted-foreground">
             {beat ? `${timeAgo(beat.at, now)} ago` : 'no heartbeat yet'}
           </span>

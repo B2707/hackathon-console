@@ -4,7 +4,7 @@ import * as React from 'react'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Expandable } from '@/components/ui/expandable'
-import { initials, seatAccent } from '@/lib/board'
+import { initials, seatAccent, seatGithubLogin } from '@/lib/board'
 import { cn } from '@/lib/utils'
 
 /**
@@ -178,7 +178,7 @@ export function BoardRow({
             <SeatAvatar seat={seat} />
             <div className="flex min-w-0 flex-col gap-px">
               <span className="truncate font-mono text-[0.95rem] font-semibold text-foreground">
-                {seat}
+                {seatGithubLogin(seat)}
               </span>
               <span className="truncate font-mono text-[0.7rem] text-muted-foreground">
                 {subline}
