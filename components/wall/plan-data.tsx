@@ -158,7 +158,7 @@ const SAMPLE_DONE: PlanCard[] = [
     id: '#8',
     title: 'Nav pill + hero',
     labels: ['design'],
-    who: 'adham',
+    who: 'mohammad',
     url: 'https://github.com/B2707/hackathon-console/pull/8',
     desc: 'Sticky nav pill and the Team Board hero header.',
   },

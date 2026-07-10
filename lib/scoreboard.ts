@@ -12,15 +12,17 @@ import {
   searchIssuesCount,
 } from './github'
 
-// Seat → GitHub login. bader is known; the other three are TODO seams. Until a
-// seat has a real handle it is "unconfigured": it is skipped here, and the wall
-// keeps showing SAMPLE data for the whole board (see components/wall/team-board
-// and app/api/scoreboard/route.ts) rather than a half-real board.
+// Seat → GitHub login. bader, sjp, and amr are known; mohammad is a TODO seam
+// (Mohammad replaced Adham on the roster; the handle he gave was invalid).
+// Until a seat has a real handle it is "unconfigured": it is skipped here, and
+// the wall keeps showing SAMPLE data for the whole board (see
+// components/wall/team-board and app/api/scoreboard/route.ts) rather than a
+// half-real board.
 export const SEAT_HANDLES: Record<string, string> = {
   bader: 'B2707',
-  sjp: '', // TODO: sjp's GitHub handle
-  amr: '', // TODO: amr's GitHub handle
-  adham: '', // TODO: adham's GitHub handle
+  sjp: 'saidel04',
+  amr: 'Amrooosh',
+  mohammad: '', // TODO: set Mohammad's GitHub handle
 }
 
 export type SeatStats = {

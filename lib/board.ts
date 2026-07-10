@@ -5,7 +5,7 @@ export const POLL_MS = 15_000
 export const FRESH_MS = 10 * 60_000
 export const WARM_MS = 30 * 60_000
 
-export const ROSTER = ['bader', 'sjp', 'amr', 'adham'] as const
+export const ROSTER = ['bader', 'sjp', 'amr', 'mohammad'] as const
 
 // --- lane canon -------------------------------------------------------------
 // Lane precedence mirrors the template's label semantics: an escalation or a
@@ -149,7 +149,7 @@ const SEAT_ACCENTS: Record<string, string> = {
   bader: '#4d8dff',
   sjp: '#fb7185',
   amr: '#fbbf24',
-  adham: '#a78bfa',
+  mohammad: '#a78bfa', // inherited from the Adham seat it replaces
 }
 
 // Fixed palette for any seat outside the roster — hashed so a given handle
@@ -171,6 +171,20 @@ export function seatAccent(name: string): string {
     hash = (hash * 31 + name.charCodeAt(i)) >>> 0
   }
   return EXTRA_PALETTE[hash % EXTRA_PALETTE.length]
+}
+
+// --- per-seat GitHub login (drives github.com/<login>.png avatar URLs) ------
+// Client-safe (unlike lib/scoreboard.ts's SEAT_HANDLES, which is server-only).
+// Unmapped seats fall back to using the seat name as the login, which 404s
+// gracefully to the AvatarFallback initials — same as before this was wired.
+const SEAT_GITHUB_LOGIN: Record<string, string> = {
+  bader: 'B2707',
+  sjp: 'saidel04',
+  amr: 'Amrooosh',
+}
+
+export function seatGithubLogin(name: string): string {
+  return SEAT_GITHUB_LOGIN[name] ?? name
 }
 
 export function initials(name: string): string {

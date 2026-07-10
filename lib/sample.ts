@@ -7,7 +7,7 @@
 import type { LeaderRow } from '@/components/wall/leader-board'
 import type { MangoRow } from '@/components/wall/mangooli-board'
 
-/** Leader Board — ranked by shipping (PRs merged). Order: bader > sjp > amr > adham. */
+/** Leader Board — ranked by shipping (PRs merged). Order: bader > sjp > amr > mohammad. */
 export const SAMPLE_LEADERBOARD: LeaderRow[] = [
   {
     rank: 1,
@@ -44,7 +44,7 @@ export const SAMPLE_LEADERBOARD: LeaderRow[] = [
   },
   {
     rank: 4,
-    seat: 'adham',
+    seat: 'mohammad',
     prsMerged: 5,
     commits: 44,
     issuesClosed: 4,
@@ -55,11 +55,11 @@ export const SAMPLE_LEADERBOARD: LeaderRow[] = [
   },
 ]
 
-/** Mangooli Board — ranked by breakage (mango pts). Order: adham (worst) > amr > sjp > bader. */
+/** Mangooli Board — ranked by breakage (mango pts). Order: mohammad (worst) > amr > sjp > bader. */
 export const SAMPLE_MANGOOLI: MangoRow[] = [
   {
     rank: 1,
-    seat: 'adham',
+    seat: 'mohammad',
     mangoPts: 13, // TODO: GitHub aggregate API (build/CI failure scoring)
     worst: true,
     subline: '4 builds · 6 CI fails',

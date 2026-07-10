@@ -14,6 +14,7 @@ import {
   initials,
   seatAccent,
   seatFreshnessFraction,
+  seatGithubLogin,
   seatStatus,
   seatStatusTone,
   timeAgo,
@@ -81,7 +82,7 @@ function SeatCard({
               style={{ boxShadow: `0 0 0 2px var(--card), 0 0 0 3.5px ${accent}` }}
             >
               <AvatarImage
-                src={`https://github.com/${name}.png?size=88`}
+                src={`https://github.com/${seatGithubLogin(name)}.png?size=88`}
                 alt={name}
               />
               <AvatarFallback style={{ color: accent }}>

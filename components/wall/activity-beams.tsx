@@ -11,6 +11,7 @@ import {
   ROSTER,
   initials,
   seatAccent,
+  seatGithubLogin,
   seatStatus,
   seatStatusTone,
   toneVar,
@@ -72,7 +73,7 @@ export function ActivityBeams({ seats, repo, now }: ActivityBeamsProps) {
                   style={{ boxShadow: `0 0 0 2px ${toneVar(tone)}` }}
                 >
                   <AvatarImage
-                    src={`https://github.com/${name}.png?size=64`}
+                    src={`https://github.com/${seatGithubLogin(name)}.png?size=64`}
                     alt={name}
                   />
                   <AvatarFallback

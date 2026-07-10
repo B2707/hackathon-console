@@ -90,7 +90,7 @@ const SAMPLE: Record<string, SeatSample> = {
     spend: '$61',
     task: 'Seat heartbeat flake · OPS-03',
   },
-  adham: {
+  mohammad: {
     work: 'red',
     health: 5,
     situation: 'Blocked — build red on main',
