@@ -21,8 +21,8 @@ const SCOREBOARD_POLL_MS = 60_000
 
 /**
  * Polls the read-only /api/scoreboard for GitHub-derived Leader/Mangooli rows.
- * Returns null until the first response; the wall shows SAMPLE data meanwhile
- * (and whenever the board is not fully configured).
+ * Returns null until the first response; the boards render their zero-state
+ * meanwhile (and whenever the aggregates are empty).
  */
 export function useScoreboard(): ScoreboardData | null {
   const [data, setData] = useState<ScoreboardData | null>(null)
@@ -36,7 +36,7 @@ export function useScoreboard(): ScoreboardData | null {
         const json = (await res.json()) as ScoreboardData
         if (alive) setData(json)
       } catch {
-        // Keep the last good value (or null → sample fallback).
+        // Keep the last good value (or null → boards show their zero-state).
       }
     }
     load()

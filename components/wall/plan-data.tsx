@@ -13,12 +13,13 @@ import {
 /**
  * Shared data + tiny presentational helpers for the Plan & Board panel
  * (handoff `team-board.html`). Kept here so plan-board / plan-kanban /
- * plan-stepper / plan-table stay small and focused.
+ * plan-table stay small and focused.
  *
- * REAL vs SAMPLE seams are marked inline: the kanban columns + the two
- * board-derived KPIs (Open PRs, Lanes Filled) come from `board`; everything
- * else (completion %, the other three KPIs, all sparkline series, the Done
- * column, and the Plan milestones) is SAMPLE, verbatim from the prototype.
+ * REAL — every value here is derived from the live `board` (/api/state issues +
+ * PRs). The KPI cards and the kanban columns come straight from that board;
+ * there are no fabricated series, no fixed completion %, and no sample cards.
+ * The board carries OPEN work only (see lib/github.fetchBoard), so there is no
+ * "Done / merged" column — that would need a closed/merged feed we don't have.
  */
 
 // --- label helpers ----------------------------------------------------------
@@ -34,43 +35,48 @@ export function topicLabels(labels: string[]): string[] {
 export type Kpi = {
   label: string
   value: string
-  /** SAMPLE series — hover history is not yet fed by any real API. */
-  series: number[]
+  /** Value accent color (CSS token). */
   color: string
 }
 
 /**
- * Five KPI cards. Open PRs + Lanes Filled are REAL (derived from `board`); the
- * other values and every sparkline series are SAMPLE.
- * // TODO: GitHub / Actions API for PRs Merged, CI Pass Rate, Deploys Today + all series.
+ * Five KPI cards, every one derived from the live `board` — open issues, open
+ * PRs, PRs in review (open + non-draft), issues ready to claim, and issues
+ * blocked/needs-human. No sparkline history is shown because no real per-metric
+ * time-series is fed; the numbers are the truth as of the latest board snapshot.
  */
 export function buildKpis(board: Board | null): Kpi[] {
+  const issues = board?.issues ?? []
   const prs = board?.prs ?? []
-  const byLane = issuesByLane(board?.issues ?? [])
+  const byLane = issuesByLane(issues)
   const lanesFilled = LANES.filter((lane) => byLane[lane].length > 0).length
+  const inReview = prs.filter((p) => !p.draft).length
+  const blocked = byLane.blocked.length + byLane['needs-human'].length
 
   return [
-    { label: 'PRs Merged', value: '33', series: [3, 5, 4, 7, 6, 9, 8, 12], color: 'var(--success)' }, // TODO: real
-    { label: 'Open PRs', value: String(prs.length), series: [6, 5, 7, 4, 5, 4, 3, 4], color: 'var(--primary)' }, // REAL value
-    { label: 'CI Pass Rate', value: '88%', series: [82, 85, 84, 88, 86, 89, 88, 88], color: 'var(--success)' }, // TODO: real
-    { label: 'Deploys Today', value: '17', series: [8, 10, 9, 13, 12, 15, 14, 17], color: 'var(--primary)' }, // TODO: real
-    { label: 'Lanes Filled', value: `${lanesFilled}/${LANES.length}`, series: [3, 4, 4, 5, 4, 4, 4, 4], color: 'var(--warning)' }, // REAL numerator
+    { label: 'Open Issues', value: String(issues.length), color: 'var(--primary)' },
+    { label: 'Open PRs', value: String(prs.length), color: 'var(--primary)' },
+    { label: 'In Review', value: String(inReview), color: 'var(--warning)' },
+    { label: 'Ready', value: String(byLane.ready.length), color: 'var(--success)' },
+    {
+      label: 'Blocked',
+      value: String(blocked),
+      color: blocked ? 'var(--danger)' : 'var(--muted-foreground)',
+    },
   ]
 }
 
 // --- kanban model ------------------------------------------------------------
-export type PlanColumnKind = 'backlog' | 'progress' | 'review' | 'done'
+export type PlanColumnKind = 'backlog' | 'progress' | 'review'
 
 export type PlanCard = {
-  /** `#<number>` for real items; a fixed id for sample Done cards. */
+  /** `#<number>` — the real issue/PR number. */
   id: string
   title: string
   labels: string[]
   /** First assignee (issues) / author (PRs); drives the avatar + status suffix. */
   who: string | null
   url: string
-  /** Sample-only body sentence; real cards fall back to the title. */
-  desc?: string
 }
 
 export type PlanColumn = {
@@ -106,10 +112,11 @@ function prCard(
 }
 
 /**
- * Map the real board into 4 kanban columns. Backlog = issues not yet `ready`
- * (triage/proposed, plus blocked/needs-human so no issue is dropped); In
- * Progress = `ready` issues + draft PRs; In Review = open (non-draft) PRs; Done
- * = SAMPLE merged cards. // TODO: closed/merged issues + PRs from GitHub.
+ * Map the real board into 3 kanban columns of OPEN work. Backlog = issues not
+ * yet `ready` (triage/proposed, plus blocked/needs-human so no issue is
+ * dropped); In Progress = `ready` issues + draft PRs; In Review = open
+ * (non-draft) PRs. There is deliberately no "Done" column: the board carries
+ * only open items, so a merged/closed lane would have no real source.
  */
 export function buildColumns(board: Board | null): PlanColumn[] {
   const issues = board?.issues ?? []
@@ -139,37 +146,8 @@ export function buildColumns(board: Board | null): PlanColumn[] {
       dot: 'var(--warning)',
       cards: openPrs.map(prCard),
     },
-    { kind: 'done', title: 'Done', dot: 'var(--success)', cards: SAMPLE_DONE },
   ]
 }
-
-/** SAMPLE — the prototype's 3 merged cards. // TODO: closed/merged from GitHub. */
-const SAMPLE_DONE: PlanCard[] = [
-  {
-    id: '#1',
-    title: 'Scaffold repo & CI',
-    labels: ['setup'],
-    who: 'B2707',
-    url: 'https://github.com/B2707/hackathon-console/pull/1',
-    desc: 'Template cloned, Actions green, seats provisioned.',
-  },
-  {
-    id: '#12',
-    title: 'Seat health gauges',
-    labels: ['frontend'],
-    who: 'MohammadESteitieh',
-    url: 'https://github.com/B2707/hackathon-console/pull/12',
-    desc: 'Ring gauges + resource meters rendered from the heartbeat feed.',
-  },
-  {
-    id: '#8',
-    title: 'Nav pill + hero',
-    labels: ['design'],
-    who: 'saidel04',
-    url: 'https://github.com/B2707/hackathon-console/pull/8',
-    desc: 'Sticky nav pill and the Team Board hero header.',
-  },
-]
 
 /** Status badge text + tint per column kind (matches the prototype `.kstatus`). */
 export const KSTATUS: Record<
@@ -185,7 +163,6 @@ export const KSTATUS: Record<
     label: (who) => (who ? `In review · ${who}` : 'In review'),
     cls: 'border-warning/30 bg-warning/15 text-warning',
   },
-  done: { label: () => 'Merged', cls: 'border-border bg-muted text-muted-foreground' },
 }
 
 /** Case-insensitive match of a card against the toolbar filter (title + labels). */

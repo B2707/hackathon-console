@@ -15,8 +15,10 @@ import { cn } from '@/lib/utils'
  * and an expanded detail of 4 breakdown bars (via `Meter`): Builds broken,
  * Merge collisions, Abandoned claims, CI failures.
  *
- * DATA: all SAMPLE for now (lib/sample.SAMPLE_MANGOOLI). // TODO: GitHub
- * aggregate API (Actions runs, merge conflicts, abandoned claim labels).
+ * DATA: REAL — breakage aggregates from /api/scoreboard (builds broken + CI
+ * failures, attributed via the Actions API). Merge collisions + abandoned
+ * claims have no clean GitHub source yet and read 0. Empty until the first poll
+ * and while the brand-new repo has no failures, when a zero-state renders.
  */
 export type MangoRow = {
   /** 1-based rank (1 = worst). */
@@ -81,48 +83,65 @@ export function MangooliBoard({ rows }: MangooliBoardProps) {
         count={totalPts}
         unit="incidents"
       />
-      <div className="flex flex-col">
-        {ordered.map((row) => (
-          <BoardRow
-            key={row.seat}
-            rank={row.rank}
-            seat={row.seat}
-            subline={row.subline}
-            unit="mango pts"
-            worst={row.worst}
-            metric={
-              <span
-                className={cn(
-                  'font-mono text-[1.25rem] font-extrabold leading-none tabular-nums',
-                  row.worst ? 'text-danger' : 'text-warning'
-                )}
-              >
-                {row.mangoPts}
-              </span>
-            }
-          >
-            <div className="flex flex-col gap-[9px] pt-1 pr-1.5 pb-3.5 pl-[42px]">
-              {BARS.map((bar) => {
-                const value = row[bar.key]
-                return (
-                  <Meter
-                    key={bar.key}
-                    label={bar.label}
-                    value={(value / maxVal) * 100}
-                    color={BAR_COLOR[bar.key]}
-                    display={
-                      <span className="text-[0.8rem] text-foreground tabular-nums">
-                        {value}
-                      </span>
-                    }
-                    className="grid-cols-[116px_1fr_auto] gap-2.5"
-                  />
-                )
-              })}
-            </div>
-          </BoardRow>
-        ))}
-      </div>
+      {ordered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+          <span className="grid size-12 place-items-center rounded-full border border-border bg-muted text-muted-foreground">
+            <TriangleAlert className="size-6" aria-hidden />
+          </span>
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              Nothing broken yet
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              A clean board. Broken builds and CI failures land here the moment
+              they happen.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col">
+          {ordered.map((row) => (
+            <BoardRow
+              key={row.seat}
+              rank={row.rank}
+              seat={row.seat}
+              subline={row.subline}
+              unit="mango pts"
+              worst={row.worst}
+              metric={
+                <span
+                  className={cn(
+                    'font-mono text-[1.25rem] font-extrabold leading-none tabular-nums',
+                    row.worst ? 'text-danger' : 'text-warning'
+                  )}
+                >
+                  {row.mangoPts}
+                </span>
+              }
+            >
+              <div className="flex flex-col gap-[9px] pt-1 pr-1.5 pb-3.5 pl-[42px]">
+                {BARS.map((bar) => {
+                  const value = row[bar.key]
+                  return (
+                    <Meter
+                      key={bar.key}
+                      label={bar.label}
+                      value={(value / maxVal) * 100}
+                      color={BAR_COLOR[bar.key]}
+                      display={
+                        <span className="text-[0.8rem] text-foreground tabular-nums">
+                          {value}
+                        </span>
+                      }
+                      className="grid-cols-[116px_1fr_auto] gap-2.5"
+                    />
+                  )
+                })}
+              </div>
+            </BoardRow>
+          ))}
+        </div>
+      )}
     </Card>
   )
 }

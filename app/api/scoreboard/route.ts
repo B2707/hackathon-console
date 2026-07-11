@@ -38,7 +38,7 @@ export async function GET() {
   }
 
   // Losers of the NX race serve the stale cache (or empty on first run); it
-  // heals on a later poll — the wall falls back to SAMPLE until then.
+  // heals on a later poll — the boards show their zero-state until then.
   const locked = await redis().set(LOCK_KEY, '1', { nx: true, ex: LOCK_TTL_S })
   if (!locked) return Response.json(cached ?? empty(repo))
 

@@ -13,9 +13,9 @@ import {
 } from './github'
 
 // Seat key (lowercased GitHub username) → proper-cased GitHub login. All four
-// seats are configured, so the wall's Leader/Mangooli boards flip from SAMPLE
-// to real GitHub aggregates (components/wall/team-board requires every roster
-// seat configured before switching off SAMPLE).
+// seats are configured, so the wall's Leader/Mangooli boards render real GitHub
+// aggregates for every roster seat (an empty board shows a zero-state, never
+// sample rows).
 export const SEAT_HANDLES: Record<string, string> = {
   b2707: 'B2707',
   mohammadesteitieh: 'MohammadESteitieh',
@@ -36,7 +36,7 @@ export type SeatStats = {
 export type Scoreboard = {
   leaderboard: LeaderRow[]
   mangooli: MangoRow[]
-  /** Roster seats that have a real handle configured (drives real-vs-sample). */
+  /** Roster seats that have a real handle configured (all four, currently). */
   configured: string[]
 }
 
