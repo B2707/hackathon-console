@@ -5,36 +5,33 @@ import { Search, SquareCheckBig } from 'lucide-react'
 
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Sparkline } from '@/components/ui/sparkline'
 import { cn } from '@/lib/utils'
 import type { Board } from '@/lib/types'
 import { buildKpis, type Kpi } from './plan-data'
 import { PlanKanban } from './plan-kanban'
-import { PlanStepper } from './plan-stepper'
 import { PlanTable } from './plan-table'
 
 /**
- * Plan & Board — progress toward the demo + the work board (handoff
- * `team-board.html` lines 2265–2596). A header (violet checklist tile + title +
- * right-aligned completion) over a row of 5 KPI stat cards, a filter + a
- * Board / Plan / Table view toggle, then the active view. The view toggle, the
- * card-expand, and the filter are React state (not DOM).
+ * Plan & Board — the live work board (handoff `team-board.html` lines
+ * 2265–2596). A header (violet checklist tile + title + a real open-item count)
+ * over a row of 5 board-derived KPI stat cards, a filter + a Board / Table view
+ * toggle, then the active view. The view toggle, the card-expand, and the
+ * filter are React state (not DOM).
  *
- * REAL: Open PRs + Lanes Filled KPIs, the kanban Backlog/In Progress/In Review
- * columns, and the whole Table view derive from `board`. SAMPLE (seamed with
- * `// TODO`): the completion %/ETA, the other 3 KPIs, every sparkline series,
- * the kanban Done column, and the Plan milestones.
+ * REAL — every number derives from `board` (/api/state issues + PRs): the KPI
+ * cards, the open-item count, the kanban Backlog/In Progress/In Review columns,
+ * and the whole Table view. There is no fixed completion %/ETA and no Plan
+ * (milestone) view: neither has a real source, so neither is shown.
  */
 export type PlanBoardProps = {
   board: Board | null
   now: number
 }
 
-type PlanView = 'board' | 'plan' | 'table'
+type PlanView = 'board' | 'table'
 
 const VIEWS: { value: PlanView; label: string }[] = [
   { value: 'board', label: 'Board' },
-  { value: 'plan', label: 'Plan' },
   { value: 'table', label: 'Table' },
 ]
 
@@ -43,10 +40,11 @@ export function PlanBoard({ board }: PlanBoardProps) {
   const [filter, setFilter] = React.useState('')
 
   const kpis = React.useMemo(() => buildKpis(board), [board])
+  const openItems = (board?.issues.length ?? 0) + (board?.prs.length ?? 0)
 
   return (
     <Card className="gap-[18px] p-5">
-      {/* Header: checklist tile + title + right-aligned completion (SAMPLE). */}
+      {/* Header: checklist tile + title + a real open-item count. */}
       <div className="flex items-start justify-between gap-[18px]">
         <div className="flex items-center gap-3">
           <span className="grid size-[38px] flex-none place-items-center rounded-[10px] border border-violet/30 bg-violet/15 text-violet">
@@ -57,18 +55,17 @@ export function PlanBoard({ board }: PlanBoardProps) {
               Plan &amp; Board
             </h2>
             <p className="mt-[3px] text-[0.82rem] text-muted-foreground">
-              Progress, milestones &amp; work in flight
+              Issues &amp; pull requests in flight
             </p>
           </div>
         </div>
 
-        {/* TODO: real completion — % done, N of M milestones, ETA. */}
         <div className="flex flex-none flex-col items-end gap-0.5">
-          <span className="font-mono text-[1.9rem] font-extrabold leading-none text-foreground">
-            62<span className="text-[0.95rem] font-semibold text-muted-foreground">%</span>
+          <span className="font-mono text-[1.9rem] font-extrabold leading-none text-foreground tabular-nums">
+            {openItems}
           </span>
           <span className="font-mono text-[0.72rem] text-muted-foreground">
-            3 of 6 · ETA ~2h 40m
+            open item{openItems === 1 ? '' : 's'}
           </span>
         </div>
       </div>
@@ -114,7 +111,6 @@ export function PlanBoard({ board }: PlanBoardProps) {
 
       {/* Active view. */}
       {view === 'board' && <PlanKanban board={board} filter={filter} />}
-      {view === 'plan' && <PlanStepper />}
       {view === 'table' && (
         <PlanTable issues={board?.issues ?? []} prs={board?.prs ?? []} filter={filter} />
       )}
@@ -128,14 +124,12 @@ function KpiCard({ kpi }: { kpi: Kpi }) {
       <span className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {kpi.label}
       </span>
-      <div className="flex items-end justify-between gap-2.5">
-        <span className="font-mono text-[1.7rem] font-bold leading-none text-foreground">
-          {kpi.value}
-        </span>
-        <div className="h-[26px] w-[82px] flex-none">
-          <Sparkline values={kpi.series} color={kpi.color} metric={kpi.label} height={40} />
-        </div>
-      </div>
+      <span
+        className="font-mono text-[1.7rem] font-bold leading-none tabular-nums"
+        style={{ color: kpi.color }}
+      >
+        {kpi.value}
+      </span>
     </div>
   )
 }

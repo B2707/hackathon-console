@@ -16,18 +16,18 @@ import {
 import type { Board } from '@/lib/types'
 
 /**
- * Board view — the 4-column kanban (handoff `.kanban-cols`). Columns + their
- * cards derive from the real board (see plan-data.buildColumns); the Done
- * column is sample. Cards are expandable via React state (not DOM): collapsed
- * shows title + tag chips + id + assignee avatar + chevron; expanded reveals a
- * status badge, the body, and a "View on GitHub" button. The toolbar `filter`
- * narrows cards by title/labels and re-counts each column.
+ * Board view — the 3-column kanban (handoff `.kanban-cols`). Columns + their
+ * cards derive entirely from the real board (see plan-data.buildColumns) — all
+ * OPEN work, no sample Done column. Cards are expandable via React state (not
+ * DOM): collapsed shows title + tag chips + id + assignee avatar + chevron;
+ * expanded reveals a status badge, the title, and a "View on GitHub" button.
+ * The toolbar `filter` narrows cards by title/labels and re-counts each column.
  */
 export function PlanKanban({ board, filter }: { board: Board | null; filter: string }) {
   const columns = React.useMemo(() => buildColumns(board), [board])
 
   return (
-    <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
       {columns.map((column) => (
         <KanbanColumn key={column.kind} column={column} filter={filter} />
       ))}
@@ -50,9 +50,15 @@ function KanbanColumn({ column, filter }: { column: PlanColumn; filter: string }
         </span>
       </div>
 
-      {cards.map((card) => (
-        <KanbanCard key={`${column.kind}-${card.id}`} card={card} kind={column.kind} />
-      ))}
+      {cards.length === 0 ? (
+        <p className="px-1 py-6 text-center text-[0.72rem] text-muted-foreground">
+          Nothing yet
+        </p>
+      ) : (
+        cards.map((card) => (
+          <KanbanCard key={`${column.kind}-${card.id}`} card={card} kind={column.kind} />
+        ))
+      )}
     </div>
   )
 }
@@ -112,9 +118,9 @@ function KanbanCard({ card, kind }: { card: PlanCard; kind: PlanColumnKind }) {
             {status.label(card.who)}
           </span>
 
-          {/* Real issues/PRs carry no body — fall back to the title. // TODO: item body. */}
+          {/* Real issues/PRs carry no separate body — show the title. */}
           <p className="text-[0.74rem] leading-[1.42] text-muted-foreground">
-            {card.desc ?? card.title}
+            {card.title}
           </p>
 
           <a

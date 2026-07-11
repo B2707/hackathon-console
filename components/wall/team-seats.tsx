@@ -13,8 +13,9 @@ import type { SeatBeat } from '@/lib/types'
  * Renders the section header (users tile + "Team" + subtitle + a live "N online"
  * indicator counting fresh seats) and a responsive 4-col grid of expandable
  * seat cards — one per roster seat, plus any real seat that shows up outside the
- * roster. Presence (status dot + "active … ago") is REAL, derived from each
- * seat's heartbeat; the rest of each card is SAMPLE (see team-seat-card.tsx).
+ * roster. Every seat card is REAL and heartbeat-only — presence, freshness
+ * ring, and last-beat detail derive from the seat's heartbeat (see
+ * team-seat-card.tsx); a seat with no beat reads "no heartbeat yet".
  */
 export type TeamSeatsProps = {
   seats: SeatBeat[]

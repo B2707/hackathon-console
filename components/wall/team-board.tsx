@@ -10,9 +10,7 @@ import { PlanBoard } from './plan-board'
 import { SystemGraph } from './system-graph'
 import { TeamSeats } from './team-seats'
 import { TweaksPanel } from './tweaks-panel'
-import { ROSTER } from '@/lib/board'
 import { mapTickerToEvents } from '@/lib/event-log'
-import { SAMPLE_LEADERBOARD, SAMPLE_MANGOOLI } from '@/lib/sample'
 import type { StateResponse } from '@/lib/types'
 import type { ScoreboardData } from '@/hooks/use-scoreboard'
 
@@ -21,9 +19,9 @@ import type { ScoreboardData } from '@/hooks/use-scoreboard'
  *
  * Lays the sections out in the handoff's order and threads the real /api/state
  * payload into each panel (deriving where the panels need it). The Leader /
- * Mangooli boards are fed SAMPLE data (lib/sample) until their GitHub-aggregate
- * feeds exist; every other panel receives real data. See each panel file for
- * its prop contract + real-vs-sample seams.
+ * Mangooli boards render the real GitHub-derived rows from /api/scoreboard;
+ * every panel is fed live data, and each renders its own honest zero-state when
+ * that data is empty (the case tonight — the repo is brand new).
  */
 export type TeamBoardProps = {
   data: StateResponse | null
@@ -32,7 +30,7 @@ export type TeamBoardProps = {
   isSyncing: boolean
   /** Force an immediate re-poll. */
   onRefresh: () => void
-  /** GitHub-derived Leader/Mangooli rows; null until first poll (→ SAMPLE). */
+  /** GitHub-derived Leader/Mangooli rows; null until the first scoreboard poll. */
   scoreboard: ScoreboardData | null
 }
 
@@ -55,18 +53,12 @@ export function TeamBoard({
   const board = data?.board ?? null
   const events = mapTickerToEvents(data?.ticker ?? [])
 
-  // Use real GitHub rows only once EVERY roster seat has a configured handle —
-  // otherwise unmapped seats would sit at zero and read as a broken board. Until
-  // then (and before the first scoreboard poll) fall back to SAMPLE data.
-  // `scoreboard!` is safe: boardsConfigured is only true when scoreboard != null.
-  const boardsConfigured =
-    scoreboard != null &&
-    scoreboard.leaderboard.length > 0 &&
-    ROSTER.every((seat) => scoreboard.configured.includes(seat))
-  const leaderboardRows = boardsConfigured
-    ? scoreboard!.leaderboard
-    : SAMPLE_LEADERBOARD
-  const mangooliRows = boardsConfigured ? scoreboard!.mangooli : SAMPLE_MANGOOLI
+  // Real GitHub-derived rows straight from /api/scoreboard. All four roster
+  // seats have configured handles (lib/scoreboard.SEAT_HANDLES), so these are
+  // the real aggregates; empty until the first poll (and while the brand-new
+  // repo has no activity), when each board shows its own zero-state.
+  const leaderboardRows = scoreboard?.leaderboard ?? []
+  const mangooliRows = scoreboard?.mangooli ?? []
 
   return (
     <div className="relative min-h-screen scroll-smooth">

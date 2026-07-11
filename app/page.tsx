@@ -6,8 +6,8 @@ import { useTeamState } from '@/hooks/use-team-state'
 
 export default function TeamBoardPage() {
   const { data, error, isSyncing, refresh } = useTeamState()
-  // Second, slower feed: GitHub-derived Leader/Mangooli rows (null until first
-  // response → the wall shows SAMPLE data meanwhile). Also public/read-only.
+  // Second, slower feed: GitHub-derived Leader/Mangooli rows (null until the
+  // first response → the boards show their zero-state meanwhile). Public/read-only.
   const scoreboard = useScoreboard()
 
   // The wall is a public, read-only view — it renders immediately and polls
